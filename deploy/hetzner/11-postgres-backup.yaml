@@ -1,0 +1,49 @@
+# Backups of rallly-db to Hetzner Object Storage via the CNPG Barman Cloud
+# plugin: continuous WAL archiving plus a daily base backup, kept 30 days,
+# under s3://rallly/postgres. Credentials come from the `rallly-s3` secret
+# (create-secrets.sh). The plugin must be installed in cnpg-system:
+#   kubectl apply -f https://github.com/cloudnative-pg/plugin-barman-cloud/releases/download/v0.15.1/manifest.yaml
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: rallly-backups
+  namespace: rallly
+spec:
+  retentionPolicy: 30d
+  configuration:
+    destinationPath: s3://rallly/postgres
+    endpointURL: https://hel1.your-objectstorage.com
+    s3Credentials:
+      accessKeyId:
+        name: rallly-s3
+        key: S3_ACCESS_KEY_ID
+      secretAccessKey:
+        name: rallly-s3
+        key: S3_SECRET_ACCESS_KEY
+    wal:
+      compression: gzip
+    data:
+      compression: gzip
+  instanceSidecarConfiguration:
+    env:
+      # Recent boto3 sends CRC checksums that some S3-compatible stores
+      # reject; only compute them when the operation requires one.
+      - name: AWS_REQUEST_CHECKSUM_CALCULATION
+        value: when_required
+      - name: AWS_RESPONSE_CHECKSUM_VALIDATION
+        value: when_required
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: rallly-db-daily
+  namespace: rallly
+spec:
+  # Six-field cron (seconds first): every day at 03:00 UTC.
+  schedule: "0 0 3 * * *"
+  backupOwnerReference: self
+  cluster:
+    name: rallly-db
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io

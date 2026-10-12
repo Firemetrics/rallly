@@ -19,6 +19,12 @@ spec:
       # Rallly's first migrations create citext; do it as superuser up front.
       postInitApplicationSQL:
         - CREATE EXTENSION IF NOT EXISTS citext;
+  # WAL archiving to Hetzner Object Storage, see 11-postgres-backup.yaml.
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: rallly-backups
   resources:
     requests:
       cpu: 250m
