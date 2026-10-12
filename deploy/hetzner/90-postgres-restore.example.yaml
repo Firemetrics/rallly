@@ -1,0 +1,36 @@
+# NOT applied by default — the restore procedure, tested on 2026-10-12.
+#
+# Recovers the latest state of rallly-db from Hetzner Object Storage (base
+# backup + archived WAL) into a NEW cluster. It does not archive WAL itself,
+# so it never writes into the live backups. To restore a specific moment,
+# add `recoveryTarget: {targetTime: "2026-10-12 20:22:00+00"}` under
+# bootstrap.recovery.
+#
+# Disaster recovery: apply this, check the data, then point the Rallly
+# Deployment's DATABASE_URL at the `rallly-db-restore-app` secret (or rename
+# the cluster to rallly-db after deleting the broken one) and re-enable the
+# barman-cloud plugin block from 10-postgres.yaml on it, with a new
+# serverName so it does not overwrite the old timeline.
+#
+# Clean up a test restore with:
+#   kubectl -n rallly delete cluster rallly-db-restore
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: rallly-db-restore
+  namespace: rallly
+spec:
+  instances: 1
+  storage:
+    storageClass: local-path
+    size: 20Gi
+  bootstrap:
+    recovery:
+      source: origin
+  externalClusters:
+    - name: origin
+      plugin:
+        name: barman-cloud.cloudnative-pg.io
+        parameters:
+          barmanObjectName: rallly-backups
+          serverName: rallly-db
