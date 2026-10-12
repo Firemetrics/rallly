@@ -8,7 +8,8 @@
 #   S3_SECRET_ACCESS_KEY  Hetzner Object Storage for uploads; read from .env
 #   RALLLY_ADMIN_EMAIL  INITIAL_ADMIN_EMAIL; defaults to the value already in
 #                    the secret (kept out of the repo, it is a personal address)
-#   GHCR_TOKEN       token with read:packages (default: `gh auth token`)
+#   GHCR_TOKEN       classic token with only read:packages; read from .env,
+#                    falls back to `gh auth token` (broad scopes, avoid)
 set -euo pipefail
 : "${KUBECONFIG:=$HOME/.kube/hetzner-k3s.yaml}"; export KUBECONFIG
 env_file="$(cd "$(dirname "$0")/../.." && pwd)/.env"
@@ -49,7 +50,11 @@ done
 kubectl -n "$ns" create secret generic rallly-s3 --from-env-file="$s3_env" \
   --dry-run=client -o yaml | kubectl apply -f -
 
-token=${GHCR_TOKEN:-$(gh auth token)}
+token=${GHCR_TOKEN:-$(dotenv GHCR_TOKEN)}
+if [ -z "$token" ]; then
+  echo "warning: GHCR_TOKEN not set, using the broad gh CLI token for ghcr-pull" >&2
+  token=$(gh auth token)
+fi
 user=$(gh api user --jq .login)
 dockerconfig=$(printf '%s:%s' "$user" "$token" | python3 -c '
 import base64, json, sys
