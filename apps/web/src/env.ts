@@ -192,6 +192,12 @@ export const env = createEnv({
      * @default "false"
      */
     OPEN_POLL_LIMIT_ENABLED: z.enum(["true", "false"]).default("false"),
+    /**
+     * Seats per space and instance users while no license is active
+     * (self-hosted only). For evaluating Rallly in an organization before
+     * buying a license; an activated license always takes precedence.
+     */
+    UNLICENSED_SEAT_LIMIT: z.coerce.number().int().min(1).max(100).optional(),
 
     /**
      * Take the app offline for scheduled maintenance. Page traffic is
@@ -349,6 +355,7 @@ export const env = createEnv({
     RATE_LIMIT_ENABLED: process.env.RATE_LIMIT_ENABLED,
     EMAIL_QUEUE_SCHEDULER_ENABLED: process.env.EMAIL_QUEUE_SCHEDULER_ENABLED,
     OPEN_POLL_LIMIT_ENABLED: process.env.OPEN_POLL_LIMIT_ENABLED,
+    UNLICENSED_SEAT_LIMIT: process.env.UNLICENSED_SEAT_LIMIT,
     MAINTENANCE_MODE: process.env.MAINTENANCE_MODE,
     MAINTENANCE_BYPASS_TOKEN: process.env.MAINTENANCE_BYPASS_TOKEN,
     TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,

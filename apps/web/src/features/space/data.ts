@@ -8,6 +8,7 @@ import { cache } from "react";
 import { isBillingEnabled } from "@/features/billing/constants";
 import { getSpaceSubscription } from "@/features/billing/data";
 import { getInstancePolicy } from "@/features/instance-policy/data";
+import { DEFAULT_SEAT_LIMIT } from "@/features/licensing/constants";
 import { cached_getInstanceLicense } from "@/features/licensing/data";
 import type { LicenseType } from "@/features/licensing/schema";
 import type { MemberDTO } from "@/features/space/member/types";
@@ -64,9 +65,9 @@ export async function getSpaceSeatCount(spaceId: string) {
 }
 
 /**
- * Default seat limit for spaces without active subscriptions
+ * Seat limit for spaces without an active subscription (cloud).
  */
-const DEFAULT_SEAT_LIMIT = 1;
+const DEFAULT_SUBSCRIPTION_SEAT_LIMIT = 1;
 const MAX_SEAT_LIMIT = 100;
 
 /**
@@ -117,10 +118,10 @@ export async function getTotalSeatsForSpace(spaceId: string): Promise<number> {
 
       if (!subscription || !subscription.active) {
         // Return default limit for spaces without active subscriptions
-        return DEFAULT_SEAT_LIMIT;
+        return DEFAULT_SUBSCRIPTION_SEAT_LIMIT;
       }
 
-      return subscription.quantity || DEFAULT_SEAT_LIMIT;
+      return subscription.quantity || DEFAULT_SUBSCRIPTION_SEAT_LIMIT;
     }
   } catch (error) {
     logger.error({ error, spaceId }, "Failed to get total seats for space");
