@@ -89,6 +89,7 @@ model User {
   calendarConnections     CalendarConnection[]
   conferencingConnections ConferencingConnection[]
   credentials             Credential[]
+  calendarFeed            CalendarFeed?
 
   // Default destination calendar for new events
   defaultDestinationCalendarId String?           @map("default_destination_calendar_id")

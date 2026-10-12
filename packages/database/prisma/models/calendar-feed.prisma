@@ -1,0 +1,16 @@
+/// A personal, subscribable iCalendar feed of the polls a user responded to.
+/// The token is the only credential: calendar clients poll the feed URL
+/// without a session, so it is stored in plain text (the URL must be shown
+/// again) and rotating it is how a leaked feed is revoked.
+model CalendarFeed {
+  id             String    @id @default(cuid())
+  userId         String    @unique @map("user_id")
+  /// App minted, CSPRNG alphanumeric ≥32 chars (nanoid customAlphabet); no schema default, so a code path that forgets to mint fails loudly
+  token          String    @unique
+  createdAt      DateTime  @default(now()) @map("created_at")
+  lastAccessedAt DateTime? @map("last_accessed_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("calendar_feeds")
+}

@@ -23,13 +23,15 @@ export interface CreateIcsEventOptions {
   }>;
   method?: "request" | "publish" | "cancel";
   status?: ics.EventStatus;
+  /** Whether the event blocks free/busy time. Clients default to OPAQUE. */
+  transp?: "OPAQUE" | "TRANSPARENT";
+  /** Outlook's free/busy hint (X-MICROSOFT-CDO-BUSYSTATUS). */
+  busyStatus?: "FREE" | "BUSY" | "TENTATIVE" | "OOF";
 }
 
-/**
- * Creates an ICS event with proper date/time handling
- * Handles all-day events, timezone conversions, and floating time automatically
- */
-export function createIcsEvent({
+export type IcsCalendarEventOptions = Omit<CreateIcsEventOptions, "method">;
+
+function toIcsEventAttributes({
   uid,
   start,
   end,
@@ -41,13 +43,11 @@ export function createIcsEvent({
   location,
   organizer,
   attendees,
-  method = "request",
   status = "CONFIRMED",
-}: CreateIcsEventOptions): {
-  error?: Error;
-  value?: string;
-} {
-  return ics.createEvent({
+  transp,
+  busyStatus,
+}: IcsCalendarEventOptions): ics.EventAttributes {
+  return {
     uid,
     productId,
     sequence,
@@ -56,8 +56,9 @@ export function createIcsEvent({
     location,
     organizer,
     attendees,
-    method,
     status,
+    transp,
+    busyStatus,
     startInputType: timeZone ? "utc" : "local",
     startOutputType: timeZone ? "utc" : "local",
     ...(allDay
@@ -85,5 +86,45 @@ export function createIcsEvent({
             end.getUTCMinutes(),
           ],
         }),
+  };
+}
+
+/**
+ * Creates an ICS event with proper date/time handling
+ * Handles all-day events, timezone conversions, and floating time automatically
+ */
+export function createIcsEvent({
+  method = "request",
+  ...options
+}: CreateIcsEventOptions): {
+  error?: Error;
+  value?: string;
+} {
+  return ics.createEvent({
+    ...toIcsEventAttributes(options),
+    method,
   });
+}
+
+/**
+ * Creates a published calendar holding many events, for subscription feeds.
+ * Each event keeps its own date handling, so all-day, zoned and floating
+ * events can share one calendar.
+ */
+export function createIcsCalendar({
+  name,
+  events,
+}: {
+  name: string;
+  events: IcsCalendarEventOptions[];
+}): {
+  error?: Error;
+  value?: string;
+} {
+  const { error, value } = ics.createEvents(events.map(toIcsEventAttributes), {
+    productId,
+    method: "PUBLISH",
+    calName: name,
+  });
+  return { error: error ?? undefined, value };
 }

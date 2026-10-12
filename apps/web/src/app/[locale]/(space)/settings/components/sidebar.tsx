@@ -14,6 +14,7 @@ import {
   BellIcon,
   BoltIcon,
   CalendarIcon,
+  CalendarSyncIcon,
   CreditCardIcon,
   KeyIcon,
   LockIcon,
@@ -64,6 +65,12 @@ export function AccountSidebarMenu({
           },
         ]
       : []),
+    {
+      id: "calendar-feed",
+      label: t("calendarFeed", { defaultValue: "Calendar feed" }),
+      icon: <CalendarSyncIcon />,
+      href: "/settings/calendar-feed",
+    },
     ...(showConferencing
       ? [
           {
