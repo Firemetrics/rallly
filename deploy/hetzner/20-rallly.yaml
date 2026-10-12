@@ -1,5 +1,5 @@
 # Rallly (fork with the personal calendar feed). Secrets are not in this
-# file: `rallly-app` (SECRET_PASSWORD, SMTP_PWD, INITIAL_ADMIN_EMAIL) and `ghcr-pull` come from
+# file: `rallly-app` (SECRET_PASSWORD, SMTP_PWD, INITIAL_ADMIN_EMAIL), `rallly-s3` and `ghcr-pull` come from
 # create-secrets.sh; `rallly-db-app` is written by CloudNativePG.
 apiVersion: v1
 kind: ConfigMap
@@ -42,6 +42,7 @@ spec:
           envFrom:
             - configMapRef: {name: rallly-config}
             - secretRef: {name: rallly-app}
+            - secretRef: {name: rallly-s3}
           env:
             - name: DATABASE_URL
               valueFrom:
