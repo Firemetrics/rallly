@@ -1,0 +1,27 @@
+# Rallly's Postgres, run by CloudNativePG on the node's local NVMe
+# (local-path). One instance: the cluster is a single node, so a replica
+# would share the same disk and add nothing. CNPG writes the app credentials
+# to the Secret `rallly-db-app` (key `uri` = DATABASE_URL).
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: rallly-db
+  namespace: rallly
+spec:
+  instances: 1
+  storage:
+    storageClass: local-path
+    size: 20Gi
+  bootstrap:
+    initdb:
+      database: rallly
+      owner: rallly
+      # Rallly's first migrations create citext; do it as superuser up front.
+      postInitApplicationSQL:
+        - CREATE EXTENSION IF NOT EXISTS citext;
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      memory: 2Gi

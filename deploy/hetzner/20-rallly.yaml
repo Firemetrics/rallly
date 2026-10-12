@@ -1,0 +1,97 @@
+# Rallly (fork with the personal calendar feed). Secrets are not in this
+# file: `rallly-app` (SECRET_PASSWORD, SMTP_PWD, INITIAL_ADMIN_EMAIL) and `ghcr-pull` come from
+# create-secrets.sh; `rallly-db-app` is written by CloudNativePG.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rallly-config
+  namespace: rallly
+data:
+  NEXT_PUBLIC_BASE_URL: https://rallly.firemetrics.ai
+  SUPPORT_EMAIL: rallly@firemetrics.ai
+  NOREPLY_EMAIL: rallly@firemetrics.ai
+  SMTP_HOST: smtp.ionos.de
+  SMTP_PORT: "587"
+  # Port 587 starts plain and upgrades with STARTTLS; "true" means implicit TLS (465).
+  SMTP_SECURE: "false"
+  SMTP_USER: rallly@firemetrics.ai
+  # Fork-only: seats per space while no license is active, for evaluating
+  # Rallly at Firemetrics. Remove once a license is activated (it wins anyway).
+  UNLICENSED_SEAT_LIMIT: "50"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rallly
+  namespace: rallly
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: rallly}
+  template:
+    metadata:
+      labels: {app: rallly}
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull
+      containers:
+        - name: rallly
+          image: ghcr.io/firemetrics/rallly:4.15.0-calfeed.2
+          ports:
+            - {name: http, containerPort: 3000}
+          envFrom:
+            - configMapRef: {name: rallly-config}
+            - secretRef: {name: rallly-app}
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef: {name: rallly-db-app, key: uri}
+          # The entrypoint runs `prisma migrate deploy` before the server
+          # listens, so allow a slow first start.
+          startupProbe:
+            httpGet: {path: /api/status, port: http}
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: {path: /api/status, port: http}
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /api/status, port: http}
+            periodSeconds: 30
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 250m, memory: 512Mi}
+            limits: {memory: 2Gi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rallly
+  namespace: rallly
+spec:
+  selector: {app: rallly}
+  ports:
+    - {name: http, port: 80, targetPort: http}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rallly
+  namespace: rallly
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: [rallly.firemetrics.ai]
+      secretName: rallly-tls
+  rules:
+    - host: rallly.firemetrics.ai
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: rallly
+                port: {name: http}
